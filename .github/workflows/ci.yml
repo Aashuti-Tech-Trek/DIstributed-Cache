@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-linux:
+    name: Build & Test (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ make
+
+      - name: Build project
+        run: |
+          make
+
+      - name: Start server in background
+        run: |
+          ./bin/server &
+          echo $! > /tmp/server.pid
+          sleep 1
+
+      - name: Run client smoke test
+        run: |
+          set -e
+          output=$(printf "SET key1 value1\nGET key1\nQUIT\n" | ./bin/client)
+          echo "$output"
+          echo "$output" | grep -q "value1"
+
+      - name: Stop server
+        run: |
+          if [ -f /tmp/server.pid ]; then kill "$(cat /tmp/server.pid)" || true; fi
+
+  build-windows:
+    name: Build & Test (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MinGW (g++)
+        run: |
+          choco install mingw -y --no-progress
+          refreshenv
+
+      - name: Build project
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\build.ps1
+
+      - name: Start server in background
+        run: |
+          $proc = Start-Process -FilePath .\bin\server.exe -NoNewWindow -PassThru
+          Start-Sleep -Seconds 2
+          Set-Content -Path server.pid -Value $proc.Id
+
+      - name: Run client smoke test
+        run: |
+          $out = @"
+SET key1 value1
+GET key1
+QUIT
+"@ | .\bin\client.exe
+          Write-Host $out
+          if ($out -notmatch 'value1') { throw 'Expected value1 in output' }
+
+      - name: Stop server
+        run: |
+          if (Test-Path server.pid) {
+            $id = Get-Content server.pid
+            Stop-Process -Id $id -ErrorAction SilentlyContinue
+          }

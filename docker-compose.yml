@@ -1,0 +1,24 @@
+# Distributed Cache - Docker Compose
+
+version: '3.8'
+
+services:
+  cache-server:
+    build: .
+    ports:
+      - "8080:8080"
+    command: ./server
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cache-client:
+    build: .
+    command: ./client
+    depends_on:
+      cache-server:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
