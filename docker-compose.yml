@@ -1,24 +1,14 @@
-# Distributed Cache - Docker Compose
-
-version: '3.8'
-
 services:
-  cache-server:
+  distributed-cache:
     build: .
+    container_name: distributed-cache
+    restart: unless-stopped
     ports:
-      - "8080:8080"
-    command: ./server
+      - "8000:8000"
+    command: ["./cache", "-port", "8000", "-capacity", "100"]
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8080"]
-      interval: 10s
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8000/"]
+      interval: 30s
       timeout: 5s
-      retries: 5
-
-  cache-client:
-    build: .
-    command: ./client
-    depends_on:
-      cache-server:
-        condition: service_healthy
-    stdin_open: true
-    tty: true
+      retries: 3
+      start_period: 10s

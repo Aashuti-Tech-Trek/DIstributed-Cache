@@ -1,30 +1,21 @@
-# Distributed Cache - Dockerfile
+FROM golang:1.26.1-alpine3.21 AS builder
 
-# Use Ubuntu as base image for C++ compilation
-FROM ubuntu:20.04
-
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install required packages
-RUN apt-get update && apt-get install -y \
-    g++ \
-    make \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set working directory
 WORKDIR /app
+COPY go.mod ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /cache main.go
 
-# Copy source code
-COPY src/ ./src/
-COPY client/ ./client/
-COPY Makefile ./
+FROM alpine:3.21
+RUN apk --no-cache add ca-certificates
 
-# Build the application
-RUN make
+WORKDIR /app
+COPY --from=builder /cache /app/cache
 
-# Expose port 8080 for the server
-EXPOSE 8080
+RUN addgroup -S app && adduser -S app -G app
+USER app
 
-# Default command (can be overridden)
-CMD ["./bin/server"]
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:8000/ >/dev/null || exit 1
+CMD ["./cache"]
