@@ -7,10 +7,12 @@ import (
 )
 
 func (c *Cache) SaveToDisk(filename string) error {
+	c.mu.RLock()
 	data := make(map[string]entry)
 	for k, ele := range c.store.cache {
 		data[k] = ele.Value.(entry)
 	}
+	c.mu.RUnlock()
 
 	file, err := os.Create(filename)
 	if err != nil {
@@ -34,12 +36,21 @@ func (c *Cache) LoadFromDisk(filename string) error {
 	}
 
 	for k, ent := range data {
-		c.store.Put(k, ent.value, ent.expiry-time.Now().Unix())
+		ttl := ent.Expiry - time.Now().Unix()
+		if ttl < 0 && ent.Expiry != 9223372036854775807 {
+			continue
+		}
+		if ent.Expiry == 9223372036854775807 {
+			ttl = 0 // Will be handled correctly by Put
+		}
+		c.SetWithTTL(k, ent.Value, ttl)
 	}
 
 	return nil
 }
 
 func (c *Cache) SetWithTTL(key, value string, ttl int64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.store.Put(key, value, ttl)
 }

@@ -14,7 +14,8 @@ func main() {
 	capacity := flag.Int("capacity", 100, "cache capacity")
 	flag.Parse()
 
-	srv := server.NewServer(*capacity, []string{}) // no replicas for now
+	self := fmt.Sprintf("127.0.0.1:%s", *port)
+	srv := server.NewServer(*capacity, self, []string{}) // no replicas for now
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Distributed Cache is running. Use /get and /set.\n"))

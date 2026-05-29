@@ -6,9 +6,9 @@ import (
 )
 
 type entry struct {
-	key    string
-	value  string
-	expiry int64
+	Key    string
+	Value  string
+	Expiry int64
 }
 
 type LRUCache struct {
@@ -28,13 +28,13 @@ func NewLRU(cap int) *LRUCache {
 func (c *LRUCache) Get(key string) (string, bool) {
 	if ele, ok := c.cache[key]; ok {
 		ent := ele.Value.(entry)
-		if time.Now().Unix() > ent.expiry {
+		if time.Now().Unix() > ent.Expiry {
 			c.ll.Remove(ele)
 			delete(c.cache, key)
 			return "", false
 		}
 		c.ll.MoveToFront(ele)
-		return ent.value, true
+		return ent.Value, true
 	}
 	return "", false
 }
@@ -55,7 +55,7 @@ func (c *LRUCache) Put(key, value string, ttl int64) {
 		last := c.ll.Back()
 		if last != nil {
 			c.ll.Remove(last)
-			delete(c.cache, last.Value.(entry).key)
+			delete(c.cache, last.Value.(entry).Key)
 		}
 	}
 }

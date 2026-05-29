@@ -43,3 +43,34 @@ func (h *HashRing) Get(key string) string {
 	}
 	return h.hashMap[h.keys[idx]]
 }
+
+func (h *HashRing) GetNodes(key string, count int) []string {
+	if len(h.keys) == 0 {
+		return nil
+	}
+	hash := int(crc32.ChecksumIEEE([]byte(key)))
+	idx := sort.Search(len(h.keys), func(i int) bool {
+		return h.keys[i] >= hash
+	})
+	if idx == len(h.keys) {
+		idx = 0
+	}
+
+	nodes := make([]string, 0, count)
+	seen := make(map[string]bool)
+	visited := 0
+
+	for len(nodes) < count && visited < len(h.keys) {
+		node := h.hashMap[h.keys[idx]]
+		if !seen[node] {
+			seen[node] = true
+			nodes = append(nodes, node)
+		}
+		idx++
+		if idx == len(h.keys) {
+			idx = 0
+		}
+		visited++
+	}
+	return nodes
+}
